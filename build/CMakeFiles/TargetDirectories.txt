@@ -1,0 +1,14 @@
+/home/haidang/Desktop/notifier-cli/build/CMakeFiles/clinotify.dir
+/home/haidang/Desktop/notifier-cli/build/CMakeFiles/package.dir
+/home/haidang/Desktop/notifier-cli/build/CMakeFiles/package_source.dir
+/home/haidang/Desktop/notifier-cli/build/CMakeFiles/edit_cache.dir
+/home/haidang/Desktop/notifier-cli/build/CMakeFiles/rebuild_cache.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/CMakeFiles/package.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/CMakeFiles/package_source.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/CMakeFiles/edit_cache.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/CMakeFiles/rebuild_cache.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/src/CMakeFiles/CLI11.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/src/CMakeFiles/package.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/src/CMakeFiles/package_source.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/src/CMakeFiles/edit_cache.dir
+/home/haidang/Desktop/notifier-cli/ext/cli11_proj-build/src/CMakeFiles/rebuild_cache.dir
