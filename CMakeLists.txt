@@ -9,6 +9,14 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra -Wall -Wpedantic")
 set(EXEC_NAME "clinotify")
 set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/ext)
 
+set(GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY "${GENERATED_INCLUDE_DIR}")
+configure_file(
+    "${CMAKE_SOURCE_DIR}/inc/configure.h.in"
+    "${GENERATED_INCLUDE_DIR}/configure.h"
+    @ONLY
+)
+
 if(UNIX AND NOT APPLE)
   find_program(NOTIFY_SEND notify-send)
   option(TRY_AUTO_INSTALL_NOTIFY_SEND "Auto-install notify-send if missing" ON)
@@ -51,8 +59,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(cli11_proj)
 
-include_directories(inc)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 add_executable(${EXEC_NAME} ${SOURCES})
+target_include_directories(${EXEC_NAME} PRIVATE inc "${GENERATED_INCLUDE_DIR}")
 target_link_libraries(${EXEC_NAME} PRIVATE CLI11::CLI11)

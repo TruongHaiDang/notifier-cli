@@ -1,147 +1,92 @@
-#include "main.h"
+#include "configure.h"
+#include "notify_send_backend.h"
+#include "notification_backend.h"
 
+#include <CLI/CLI.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <chrono>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
 
+namespace
+{
+// Sinh chuỗi mô tả phiên bản của ứng dụng.
+[[nodiscard]] std::string build_version_string()
+{
+    return std::string(PROJECT_EXECUTABLE) + " version " + PROJECT_VERSION;
+}
+} // namespace
+
+//------------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
     CLI::App app{"Notification in CLI"};
-    app.require_subcommand(1); // bắt buộc chọn 1 platform
+    app.set_version_flag("--version", build_version_string());
+    app.require_subcommand(1);
 
-    // ----- Local -----
-    Notification local;
-    auto sc_local = app.add_subcommand("local", "Send notification via local OS");
-    sc_local->add_option("-t,--title", local.payload.title, "Title")->required();
-    sc_local->add_option("-b,--body", local.payload.body, "Body")->required();
-    sc_local->add_option("-p,--topic", local.topic, "Topic");
-    sc_local->add_option("-i,--image-url", local.payload.image_url, "Image URL");
-    sc_local->callback([&]()
-                       {
-        // Sinh ID
-        boost::uuids::uuid id = boost::uuids::random_generator()();
-        local.id = boost::uuids::to_string(id);
-        // Lấy thời gian tạo
-        auto now = std::chrono::system_clock::now();
-        std::time_t t = std::chrono::system_clock::to_time_t(now);
-        local.created_at = t;
+    struct BackendContext
+    {
+        std::shared_ptr<NotificationBackend> backend;
+        Notification notification;
+    };
 
-        print_notification_details(local);
-        send_local_linux_notification(local); 
-    });
+    std::vector<std::shared_ptr<BackendContext>> contexts;
+    contexts.reserve(1);
+
+    // Hàm tiện ích để đăng ký backend vào CLI. Điều này giúp việc bổ sung
+    // backend mới trong tương lai chỉ cần gọi hàm này với hiện thực tương ứng.
+    auto register_backend = [&](std::shared_ptr<NotificationBackend> backend) {
+        auto context = std::make_shared<BackendContext>();
+        context->backend = std::move(backend);
+
+        CLI::App *subcommand = app.add_subcommand(context->backend->name(), context->backend->description());
+        context->backend->configure_cli(*subcommand, context->notification);
+
+        subcommand->callback([ctx = context->backend, notification_context = context]() {
+            const boost::uuids::uuid id = boost::uuids::random_generator()();
+            notification_context->notification.id = boost::uuids::to_string(id);
+
+            const auto now = std::chrono::system_clock::now();
+            notification_context->notification.created_at = std::chrono::system_clock::to_time_t(now);
+
+            print_notification_details(notification_context->notification);
+            ctx->send(notification_context->notification);
+        });
+
+        contexts.emplace_back(std::move(context));
+    };
+
+    register_backend(std::make_shared<NotifySendBackend>());
 
     CLI11_PARSE(app, argc, argv);
     return 0;
 }
 
+//------------------------------------------------------------------------------
 void print_notification_details(const Notification &options)
 {
-    constexpr int line_length = 45;
-    const std::string separator(line_length, '=');
+    constexpr int kLineLength = 45;
+    const std::string separator(kLineLength, '=');
 
-    char time_buffer[100];
-    std::tm *tm_info = std::localtime(&options.created_at);
-    std::strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", tm_info);
+    char time_buffer[100] = {0};
+    const std::tm *tm_info = std::localtime(&options.created_at);
+    if (tm_info != nullptr)
+    {
+        std::strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", tm_info);
+    }
 
-    std::cout << "\n"
-              << separator << "\n";
+    std::cout << '\n' << separator << '\n';
     std::cout << "         NOTIFICATION DETAILS\n";
-    std::cout << separator << "\n";
+    std::cout << separator << '\n';
     std::cout << std::left;
-    std::cout << " Notification ID  : " << options.id << "\n";
-    std::cout << " Topic            : " << options.topic << "\n";
-    std::cout << " Created At       : " << time_buffer << "\n";
-    std::cout << " Title            : " << options.payload.title << "\n";
-    std::cout << " Body             : " << options.payload.body << "\n";
-    std::cout << " Image URL        : " << options.payload.image_url << "\n";
-    std::cout << separator << "\n"
-              << std::endl;
-}
-
-void send_local_linux_notification(Notification notification)
-{
-#if defined(__linux__)
-    const char *notify_send_binary = "notify-send";
-
-    // Prepare arguments for notify-send while keeping ownership with std::string.
-    std::vector<std::string> args;
-    args.emplace_back(notify_send_binary);
-
-    if (!notification.topic.empty())
-    {
-        args.emplace_back("--app-name");
-        args.emplace_back(notification.topic);
-        args.emplace_back("--category");
-        args.emplace_back(notification.topic);
-        args.emplace_back("--hint=string:topic:" + notification.topic);
-    }
-
-    if (!notification.id.empty())
-    {
-        args.emplace_back("--hint=string:notification-id:" + notification.id);
-    }
-
-    if (notification.created_at != 0)
-    {
-        args.emplace_back("--hint=int:created-at:" + std::to_string(static_cast<long long>(notification.created_at)));
-    }
-
-    if (!notification.payload.image_url.empty())
-    {
-        args.emplace_back("--icon");
-        args.emplace_back(notification.payload.image_url);
-    }
-
-    const std::string title = notification.payload.title.empty() ? "Notification" : notification.payload.title;
-    args.emplace_back(title);
-
-    if (!notification.payload.body.empty())
-    {
-        args.emplace_back(notification.payload.body);
-    }
-
-    // Convert to the char* array expected by execvp.
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 1);
-    for (auto &arg : args)
-    {
-        argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-
-    pid_t pid = ::fork();
-    if (pid == -1)
-    {
-        std::cerr << "[notify-cli] Failed to fork for notify-send: " << std::strerror(errno) << std::endl;
-        return;
-    }
-
-    if (pid == 0)
-    {
-        ::execvp(notify_send_binary, argv.data());
-        std::cerr << "[notify-cli] execvp failed for notify-send: " << std::strerror(errno) << std::endl;
-        _exit(EXIT_FAILURE);
-    }
-
-    int status = 0;
-    if (::waitpid(pid, &status, 0) == -1)
-    {
-        std::cerr << "[notify-cli] Failed to wait for notify-send: " << std::strerror(errno) << std::endl;
-        return;
-    }
-
-    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
-    {
-        std::cerr << "[notify-cli] notify-send exited abnormally";
-        if (WIFEXITED(status))
-        {
-            std::cerr << " with status " << WEXITSTATUS(status);
-        }
-        else if (WIFSIGNALED(status))
-        {
-            std::cerr << " due to signal " << WTERMSIG(status);
-        }
-        std::cerr << std::endl;
-    }
-#else
-    (void)notification;
-    std::cerr << "[notify-cli] Local Linux notification backend is unavailable on this platform." << std::endl;
-#endif
+    std::cout << " Notification ID  : " << options.id << '\n';
+    std::cout << " Topic            : " << options.topic << '\n';
+    std::cout << " Created At       : " << time_buffer << '\n';
+    std::cout << " Title            : " << options.payload.title << '\n';
+    std::cout << " Body             : " << options.payload.body << '\n';
+    std::cout << " Image URL        : " << options.payload.image_url << '\n';
+    std::cout << separator << '\n' << std::endl;
 }
