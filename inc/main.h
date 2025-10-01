@@ -1,28 +1,23 @@
-#include <iostream>
-#include <CLI/CLI.hpp>
-#include <string>
-#include <string_view>
+#pragma once
+
 #include <chrono>
 #include <ctime>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
+#include <string>
 
-using namespace std;
-
-// Basic structure of a message
-struct Notification {
+// Đại diện cho nội dung một thông báo.
+struct Notification
+{
     std::string id;
     std::string topic;
-    std::time_t created_at;
+    std::time_t created_at{0};
 
-    struct Payload {
+    struct Payload
+    {
         std::string title;
         std::string body;
         std::string image_url;
-    } payload; // biến thành viên
+    } payload;
 };
 
-// In chi tiết thông báo theo định dạng đẹp
-void print_notification_details(const Notification& options);
-void send_local_linux_notification(Notification notification);
+// In chi tiết thông báo theo định dạng dễ đọc.
+void print_notification_details(const Notification &options);
