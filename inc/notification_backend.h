@@ -28,6 +28,8 @@ public:
     void configure_cli(CLI::App &subcommand, Notification &notification) const;
     void send(const Notification &notification) const;
 
+    void set_telegram_bot_token(std::string bot_token);
+
 private:
 #if defined(__linux__)
     static constexpr const char *kNotifySendBinary = "notify-send";

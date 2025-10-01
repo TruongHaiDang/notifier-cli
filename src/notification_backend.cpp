@@ -144,4 +144,10 @@ void NotificationBackend::execute_notify_send(const std::vector<std::string> &ar
         std::cerr << std::endl;
     }
 }
+
+void set_telegram_bot_token(std::string bot_token)
+{
+    
+}
+
 #endif
