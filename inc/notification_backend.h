@@ -3,30 +3,37 @@
 #include "main.h"
 
 #include <string>
+#include <vector>
 
 namespace CLI
 {
 class App;
 } // namespace CLI
 
-// Giao diện chung cho mọi backend gửi thông báo.
-// Mỗi backend chịu trách nhiệm cấu hình tham số CLI và thực thi việc gửi
-// thông báo tương ứng với nền tảng mà nó hỗ trợ.
-class NotificationBackend
+// Backend gửi thông báo bằng notify-send trên Linux.
+class NotificationBackend final
 {
 public:
-    virtual ~NotificationBackend() = default;
+    NotificationBackend() = default;
+    ~NotificationBackend() = default;
 
-    // Trả về tên duy nhất của backend, dùng để khai báo subcommand.
-    [[nodiscard]] virtual std::string name() const = 0;
+    NotificationBackend(const NotificationBackend &) = delete;
+    NotificationBackend &operator=(const NotificationBackend &) = delete;
+    NotificationBackend(NotificationBackend &&) = delete;
+    NotificationBackend &operator=(NotificationBackend &&) = delete;
 
-    // Trả về mô tả ngắn gọn cho backend để hiển thị trong CLI.
-    [[nodiscard]] virtual std::string description() const = 0;
+    [[nodiscard]] std::string name() const;
+    [[nodiscard]] std::string description() const;
 
-    // Đăng ký toàn bộ tham số CLI cần thiết cho backend.
-    virtual void configure_cli(CLI::App &subcommand, Notification &notification) const = 0;
+    void configure_cli(CLI::App &subcommand, Notification &notification) const;
+    void send(const Notification &notification) const;
 
-    // Gửi thông báo với dữ liệu đã được thu thập từ CLI.
-    virtual void send(const Notification &notification) const = 0;
+private:
+#if defined(__linux__)
+    static constexpr const char *kNotifySendBinary = "notify-send";
+
+    [[nodiscard]] std::vector<std::string> build_arguments(const Notification &notification) const;
+    void execute_notify_send(const std::vector<std::string> &args) const;
+#endif
 };
 

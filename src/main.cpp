@@ -1,5 +1,4 @@
 #include "configure.h"
-#include "notify_send_backend.h"
 #include "notification_backend.h"
 
 #include <CLI/CLI.hpp>
@@ -7,9 +6,7 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <chrono>
 #include <iostream>
-#include <memory>
 #include <string>
-#include <vector>
 
 namespace
 {
@@ -27,39 +24,22 @@ int main(int argc, char **argv)
     app.set_version_flag("--version", build_version_string());
     app.require_subcommand(1);
 
-    struct BackendContext
-    {
-        std::shared_ptr<NotificationBackend> backend;
-        Notification notification;
-    };
+    NotificationBackend backend;
+    Notification notification;
 
-    std::vector<std::shared_ptr<BackendContext>> contexts;
-    contexts.reserve(1);
+    CLI::App *subcommand = app.add_subcommand(backend.name(), backend.description());
+    backend.configure_cli(*subcommand, notification);
 
-    // Hàm tiện ích để đăng ký backend vào CLI. Điều này giúp việc bổ sung
-    // backend mới trong tương lai chỉ cần gọi hàm này với hiện thực tương ứng.
-    auto register_backend = [&](std::shared_ptr<NotificationBackend> backend) {
-        auto context = std::make_shared<BackendContext>();
-        context->backend = std::move(backend);
+    subcommand->callback([&backend, &notification]() {
+        const boost::uuids::uuid id = boost::uuids::random_generator()();
+        notification.id = boost::uuids::to_string(id);
 
-        CLI::App *subcommand = app.add_subcommand(context->backend->name(), context->backend->description());
-        context->backend->configure_cli(*subcommand, context->notification);
+        const auto now = std::chrono::system_clock::now();
+        notification.created_at = std::chrono::system_clock::to_time_t(now);
 
-        subcommand->callback([ctx = context->backend, notification_context = context]() {
-            const boost::uuids::uuid id = boost::uuids::random_generator()();
-            notification_context->notification.id = boost::uuids::to_string(id);
-
-            const auto now = std::chrono::system_clock::now();
-            notification_context->notification.created_at = std::chrono::system_clock::to_time_t(now);
-
-            print_notification_details(notification_context->notification);
-            ctx->send(notification_context->notification);
-        });
-
-        contexts.emplace_back(std::move(context));
-    };
-
-    register_backend(std::make_shared<NotifySendBackend>());
+        print_notification_details(notification);
+        backend.send(notification);
+    });
 
     CLI11_PARSE(app, argc, argv);
     return 0;
@@ -90,3 +70,4 @@ void print_notification_details(const Notification &options)
     std::cout << " Image URL        : " << options.payload.image_url << '\n';
     std::cout << separator << '\n' << std::endl;
 }
+

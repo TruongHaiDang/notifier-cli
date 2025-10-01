@@ -1,4 +1,4 @@
-#include "notify_send_backend.h"
+#include "notification_backend.h"
 
 #include <CLI/CLI.hpp>
 #include <cerrno>
@@ -8,22 +8,25 @@
 
 #if defined(__linux__)
 #include <cstdlib>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #endif
 
 //------------------------------------------------------------------------------
-std::string NotifySendBackend::name() const
+std::string NotificationBackend::name() const
 {
-    return "notify-send";
+    return "local";
 }
 
 //------------------------------------------------------------------------------
-std::string NotifySendBackend::description() const
+std::string NotificationBackend::description() const
 {
     return "Send notification using notify-send on Linux";
 }
 
 //------------------------------------------------------------------------------
-void NotifySendBackend::configure_cli(CLI::App &subcommand, Notification &notification) const
+void NotificationBackend::configure_cli(CLI::App &subcommand, Notification &notification) const
 {
     subcommand.add_option("-t,--title", notification.payload.title, "Title")->required();
     subcommand.add_option("-b,--body", notification.payload.body, "Body")->required();
@@ -32,7 +35,7 @@ void NotifySendBackend::configure_cli(CLI::App &subcommand, Notification &notifi
 }
 
 //------------------------------------------------------------------------------
-void NotifySendBackend::send(const Notification &notification) const
+void NotificationBackend::send(const Notification &notification) const
 {
 #if defined(__linux__)
     try
@@ -52,7 +55,7 @@ void NotifySendBackend::send(const Notification &notification) const
 
 //------------------------------------------------------------------------------
 #if defined(__linux__)
-std::vector<std::string> NotifySendBackend::build_arguments(const Notification &notification) const
+std::vector<std::string> NotificationBackend::build_arguments(const Notification &notification) const
 {
     std::vector<std::string> args;
     args.reserve(10);
@@ -95,7 +98,7 @@ std::vector<std::string> NotifySendBackend::build_arguments(const Notification &
 }
 
 //------------------------------------------------------------------------------
-void NotifySendBackend::execute_notify_send(const std::vector<std::string> &args) const
+void NotificationBackend::execute_notify_send(const std::vector<std::string> &args) const
 {
     std::vector<char *> argv;
     argv.reserve(args.size() + 1);
