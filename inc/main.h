@@ -8,6 +8,18 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
+#include <vector>
+#include <string>
+#include <cerrno>
+#include <cstring>
+#include <cstdlib>
+
+#if defined(__linux__)
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
 using namespace std;
 
 // Basic structure of a message

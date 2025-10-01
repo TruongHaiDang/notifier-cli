@@ -1,17 +1,5 @@
 #include "main.h"
 
-#include <vector>
-#include <string>
-#include <cerrno>
-#include <cstring>
-#include <cstdlib>
-
-#if defined(__linux__)
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#endif
-
 
 int main(int argc, char **argv)
 {
