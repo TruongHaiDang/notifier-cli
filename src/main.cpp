@@ -24,22 +24,30 @@ int main(int argc, char **argv)
     app.set_version_flag("--version", build_version_string());
     app.require_subcommand(1);
 
-    NotificationBackend backend;
-    Notification notification;
+    NotificationBackend local_backend(NotificationBackend::Mode::Local);
+    Notification local_notification;
 
-    CLI::App *subcommand = app.add_subcommand(backend.name(), backend.description());
-    backend.configure_cli(*subcommand, notification);
+    NotificationBackend telegram_backend(NotificationBackend::Mode::Telegram);
+    Notification telegram_notification;
 
-    subcommand->callback([&backend, &notification]() {
-        const boost::uuids::uuid id = boost::uuids::random_generator()();
-        notification.id = boost::uuids::to_string(id);
+    auto register_subcommand = [&app](NotificationBackend &backend, Notification &notification) {
+        CLI::App *subcommand = app.add_subcommand(backend.name(), backend.description());
+        backend.configure_cli(*subcommand, notification);
 
-        const auto now = std::chrono::system_clock::now();
-        notification.created_at = std::chrono::system_clock::to_time_t(now);
+        subcommand->callback([&backend, &notification]() {
+            const boost::uuids::uuid id = boost::uuids::random_generator()();
+            notification.id = boost::uuids::to_string(id);
 
-        print_notification_details(notification);
-        backend.send(notification);
-    });
+            const auto now = std::chrono::system_clock::now();
+            notification.created_at = std::chrono::system_clock::to_time_t(now);
+
+            print_notification_details(notification);
+            backend.send(notification);
+        });
+    };
+
+    register_subcommand(local_backend, local_notification);
+    register_subcommand(telegram_backend, telegram_notification);
 
     CLI11_PARSE(app, argc, argv);
     return 0;
@@ -64,10 +72,12 @@ void print_notification_details(const Notification &options)
     std::cout << std::left;
     std::cout << " Notification ID  : " << options.id << '\n';
     std::cout << " Topic            : " << options.topic << '\n';
+    std::cout << " Bot Token        : "
+              << (options.bot_token.empty() ? "<not set>" : "<provided>") << '\n';
+    std::cout << " Chat ID          : " << options.chat_id << '\n';
     std::cout << " Created At       : " << time_buffer << '\n';
     std::cout << " Title            : " << options.payload.title << '\n';
     std::cout << " Body             : " << options.payload.body << '\n';
     std::cout << " Image URL        : " << options.payload.image_url << '\n';
     std::cout << separator << '\n' << std::endl;
 }
-
