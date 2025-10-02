@@ -10,11 +10,17 @@ namespace CLI
 class App;
 } // namespace CLI
 
-// Backend gửi thông báo bằng notify-send trên Linux.
+// Backend gửi thông báo theo từng chế độ (local hoặc telegram).
 class NotificationBackend final
 {
 public:
-    NotificationBackend() = default;
+    enum class Mode
+    {
+        Local,
+        Telegram
+    };
+
+    explicit NotificationBackend(Mode mode);
     ~NotificationBackend() = default;
 
     NotificationBackend(const NotificationBackend &) = delete;
@@ -28,14 +34,17 @@ public:
     void configure_cli(CLI::App &subcommand, Notification &notification) const;
     void send(const Notification &notification) const;
 
-    void set_telegram_bot_token(std::string bot_token);
-
 private:
+    Mode mode_;
+
 #if defined(__linux__)
     static constexpr const char *kNotifySendBinary = "notify-send";
 
     [[nodiscard]] std::vector<std::string> build_arguments(const Notification &notification) const;
     void execute_notify_send(const std::vector<std::string> &args) const;
 #endif
-};
+    static constexpr const char *kTelegramBaseUrl = "https://api.telegram.org/bot";
 
+    [[nodiscard]] bool send_via_telegram(const Notification &notification) const;
+    [[nodiscard]] std::string build_message(const Notification &notification) const;
+};

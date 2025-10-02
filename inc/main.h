@@ -9,6 +9,8 @@ struct Notification
 {
     std::string id;
     std::string topic;
+    std::string bot_token;
+    std::string chat_id;
     std::time_t created_at{0};
 
     struct Payload
